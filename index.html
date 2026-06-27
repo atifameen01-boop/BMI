@@ -1483,3 +1483,1125 @@ function doPost(e) {
             }
 
             // Sync placeholders and inputs visually
+            waistUnitText.innerText = currentSystem === 'metric' ? 'cm' : 'in';
+            hipUnitText.innerText = currentSystem === 'metric' ? 'cm' : 'in';
+            neckUnitText.innerText = currentSystem === 'metric' ? 'cm' : 'in';
+
+            // Calculations update real-time MET burn box automatically
+            calculateIndividualActivity();
+
+            // --- CALCULATOR 1: OBESITY / BMI & WHR/WHtR ---
+            const heightMeters = heightCm / 100;
+            const bmi = weightKg / (heightMeters * heightMeters);
+            
+            let bmiClassification = "Normal";
+            let bmiColorClass = "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400";
+            let bmiRisk = "Minimal risk";
+            
+            if (bmi < 18.5) {
+                bmiClassification = "Underweight";
+                bmiColorClass = "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400";
+                bmiRisk = "Low risk of chronic disease, high risk of nutritional deficiency";
+            } else if (bmi >= 18.5 && bmi < 25) {
+                bmiClassification = "Normal";
+                bmiColorClass = "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400";
+                bmiRisk = "Optimal physical baseline health";
+            } else if (bmi >= 25 && bmi < 30) {
+                bmiClassification = "Over-weight";
+                bmiColorClass = "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400";
+                bmiRisk = "Elevated cardiovascular and metabolic risks";
+            } else if (bmi >= 30 && bmi < 35) {
+                bmiClassification = "Obesity Type 1";
+                bmiColorClass = "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400";
+                bmiRisk = "Moderate hazard for type 2 diabetes and hypertension";
+            } else if (bmi >= 35 && bmi < 40) {
+                bmiClassification = "Obesity Type 2";
+                bmiColorClass = "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400";
+                bmiRisk = "Severe hazard. Medical intervention strongly recommended";
+            } else {
+                bmiClassification = "Obesity Type 3";
+                bmiColorClass = "bg-rose-200 text-rose-800 dark:bg-rose-950/50 dark:text-rose-400";
+                bmiRisk = "Critical danger level";
+            }
+
+            bmiClassBadge.innerText = bmiClassification;
+            bmiClassBadge.className = `px-2.5 py-1 text-xs font-bold rounded-lg ${bmiColorClass}`;
+            bmiNumber.innerText = bmi.toFixed(1);
+
+            let angle = -90;
+            if (bmi <= 15) {
+                angle = -90;
+            } else if (bmi >= 40) {
+                angle = 90;
+            } else {
+                const pct = (bmi - 15) / (40 - 15);
+                angle = -90 + (pct * 180);
+            }
+            gaugePointer.style.transform = `rotate(${angle}deg)`;
+
+            const whr = waistCm / hipCm;
+            whrNumber.innerText = whr.toFixed(2);
+            let whrClassification = "Low Risk";
+            let whrColorClass = "text-green-600 dark:text-green-400";
+
+            if (sex === 'male') {
+                if (whr >= 0.9 && whr < 1.0) {
+                    whrClassification = "Moderate Risk";
+                    whrColorClass = "text-orange-600 dark:text-orange-400";
+                } else if (whr >= 1.0) {
+                    whrClassification = "High Risk Obesity";
+                    whrColorClass = "text-red-600 dark:text-red-400";
+                }
+            } else {
+                if (whr >= 0.8 && whr < 0.85) {
+                    whrClassification = "Moderate Risk";
+                    whrColorClass = "text-orange-600 dark:text-orange-400";
+                } else if (whr >= 0.85) {
+                    whrClassification = "High Risk Obesity";
+                    whrColorClass = "text-red-600 dark:text-red-400";
+                }
+            }
+            whrRiskBadge.innerText = whrClassification;
+            whrRiskBadge.className = `text-[10px] font-bold ${whrColorClass} uppercase`;
+
+            const whtr = waistCm / heightCm;
+            whtrNumber.innerText = whtr.toFixed(2);
+            let whtrClassification = "Healthy Shape";
+            let whtrColorClass = "text-green-600 dark:text-green-400";
+
+            if (whtr >= 0.5 && whtr < 0.6) {
+                whtrClassification = "Overly Centered Fat";
+                whtrColorClass = "text-orange-600 dark:text-orange-400";
+            } else if (whtr >= 0.6) {
+                whtrClassification = "Extremely Centered Obesity";
+                whtrColorClass = "text-red-600 dark:text-red-400";
+            }
+            whtrRiskBadge.innerText = whtrClassification;
+            whtrRiskBadge.className = `text-[10px] font-bold ${whtrColorClass} uppercase`;
+
+            // --- CALCULATOR 2: ADIPOSITY SHAPE (AS) INDEX ---
+            const waistVal = parseFloat(inputWaist.value) || 0;
+            const hipVal = parseFloat(inputHip.value) || 0;
+            const asIndex = hipVal - waistVal;
+            const asUnit = currentSystem === 'metric' ? 'cm' : 'in';
+
+            document.getElementById('asIndexVal').innerText = asIndex.toFixed(1);
+            document.getElementById('asIndexUnit').innerText = asUnit;
+
+            // Strict metric conversion for clinical standard interpretation (0-5, 8+)
+            const waistCmValue = currentSystem === 'metric' ? waistVal : waistVal * 2.54;
+            const hipCmValue = currentSystem === 'metric' ? hipVal : hipVal * 2.54;
+            const neckCmValue = currentSystem === 'metric' ? parseFloat(inputNeck.value) : parseFloat(inputNeck.value) * 2.54;
+            const asIndexCm = hipCmValue - waistCmValue;
+
+            let asClass = "Intermediate Shape";
+            let asClassStyle = "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300";
+
+            if (asIndexCm < 0) {
+                asClass = "Android Obesity";
+                asClassStyle = "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300";
+            } else if (asIndexCm >= 0 && asIndexCm <= 5) {
+                asClass = "Barrel Shaped Obesity";
+                asClassStyle = "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300";
+            } else if (asIndexCm > 5 && asIndexCm < 8) {
+                asClass = "Intermediate Shape";
+                asClassStyle = "bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300";
+            } else if (asIndexCm >= 8) {
+                asClass = "Gynoid Obesity";
+                asClassStyle = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300";
+            }
+
+            const asBadge = document.getElementById('asIndexClassBadge');
+            asBadge.innerText = asClass;
+            asBadge.className = `px-2 py-0.5 text-[10px] font-bold rounded ${asClassStyle}`;
+
+            // --- CALCULATOR 3: BODY FAT PERCENTAGE (U.S. Navy Method) ---
+            let bodyFatPct = 0;
+            const heightInches = heightCm / 2.54;
+            const waistInches = waistCmValue / 2.54;
+            const hipInches = hipCmValue / 2.54;
+            const neckInches = neckCmValue / 2.54;
+
+            if (sex === 'male') {
+                if (waistInches > neckInches) {
+                    bodyFatPct = 86.010 * Math.log10(waistInches - neckInches) - 70.041 * Math.log10(heightInches) + 36.76;
+                } else {
+                    bodyFatPct = (1.20 * bmi) + (0.23 * age) - 16.2 - 5.4;
+                }
+            } else {
+                if ((waistInches + hipInches) > neckInches) {
+                    bodyFatPct = 161.278 * Math.log10(waistInches + hipInches - neckInches) - 138.742 * Math.log10(heightInches) + 22.09;
+                } else {
+                    bodyFatPct = (1.20 * bmi) + (0.23 * age) - 5.4;
+                }
+            }
+
+            if (bodyFatPct < 2) bodyFatPct = 2;
+            if (bodyFatPct > 60) bodyFatPct = 60;
+
+            let fatClassification = "Acceptable";
+            let fatClassStyle = "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400";
+            
+            if (sex === 'male') {
+                if (bodyFatPct >= 2 && bodyFatPct <= 5) {
+                    fatClassification = "Essential Fat";
+                    fatClassStyle = "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400";
+                } else if (bodyFatPct > 5 && bodyFatPct <= 13) {
+                    fatClassification = "Athletes";
+                    fatClassStyle = "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400";
+                } else if (bodyFatPct > 13 && bodyFatPct <= 17) {
+                    fatClassification = "Fitness";
+                    fatClassStyle = "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400";
+                } else if (bodyFatPct > 17 && bodyFatPct <= 24) {
+                    fatClassification = "Acceptable";
+                    fatClassStyle = "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400";
+                } else if (bodyFatPct > 24) {
+                    fatClassification = "Obese";
+                    fatClassStyle = "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400";
+                }
+            } else {
+                if (bodyFatPct >= 10 && bodyFatPct <= 13) {
+                    fatClassification = "Essential Fat";
+                    fatClassStyle = "bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400";
+                } else if (bodyFatPct > 13 && bodyFatPct <= 20) {
+                    fatClassification = "Athletes";
+                    fatClassStyle = "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400";
+                } else if (bodyFatPct > 20 && bodyFatPct <= 24) {
+                    fatClassification = "Fitness";
+                    fatClassStyle = "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400";
+                } else if (bodyFatPct > 24 && bodyFatPct <= 31) {
+                    fatClassification = "Acceptable";
+                    fatClassStyle = "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400";
+                } else if (bodyFatPct > 31) {
+                    fatClassification = "Obese";
+                    fatClassStyle = "bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400";
+                }
+            }
+
+            const fatMassKg = weightKg * (bodyFatPct / 100);
+            const leanMassKg = weightKg - fatMassKg;
+
+            bodyFatClassBadge.innerText = fatClassification;
+            bodyFatClassBadge.className = `px-2.5 py-1 text-xs font-bold rounded-lg ${fatClassStyle}`;
+            bodyFatPctVal.innerText = `${bodyFatPct.toFixed(1)}%`;
+
+            if (currentSystem === 'metric') {
+                leanBodyMassVal.innerText = `${leanMassKg.toFixed(1)} kg`;
+                leanMassWeightText.innerText = `${leanMassKg.toFixed(1)} kg`;
+                fatMassWeightText.innerText = `${fatMassKg.toFixed(1)} kg`;
+            } else {
+                const leanMassLbs = leanMassKg * 2.20462;
+                const fatMassLbs = fatMassKg * 2.20462;
+                leanBodyMassVal.innerText = `${leanMassLbs.toFixed(1)} lbs`;
+                leanMassWeightText.innerText = `${leanMassLbs.toFixed(1)} lbs`;
+                fatMassWeightText.innerText = `${fatMassLbs.toFixed(1)} lbs`;
+            }
+
+            const leanPercentage = 100 - bodyFatPct;
+            leanMassBar.style.width = `${leanPercentage}%`;
+            fatMassBar.style.width = `${bodyFatPct}%`;
+
+            // --- CALCULATOR 4: NUTRITION & BMR ---
+            let bmr = 0;
+            if (sex === 'male') {
+                bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) + 5;
+            } else {
+                bmr = (10 * weightKg) + (6.25 * heightCm) - (5 * age) - 161;
+            }
+
+            const katchMcArdleBmr = 370 + (21.6 * leanMassKg);
+            if (bodyFatPct > (sex === 'male' ? 25 : 32)) {
+                bmr = katchMcArdleBmr;
+            }
+
+            const totalActiveBurn = exerciseLogs.reduce((acc, item) => acc + item.calories, 0);
+            const tdee = (bmr * pal) + totalActiveBurn;
+
+            let calorieGoal = tdee;
+            let goalDescription = "Balanced Maintenance";
+
+            switch (goal) {
+                case 'weight_loss':
+                    calorieGoal = tdee - 500;
+                    if (calorieGoal < 1200 && sex === 'female') calorieGoal = 1200;
+                    if (calorieGoal < 1500 && sex === 'male') calorieGoal = 1500;
+                    goalDescription = "Sustainable Weight Loss";
+                    break;
+                case 'muscle_gain':
+                    calorieGoal = tdee + 300;
+                    goalDescription = "Lean Muscle Gain";
+                    break;
+                case 'low_carb':
+                    calorieGoal = tdee - 200;
+                    goalDescription = "Low-Carb Nutrition";
+                    break;
+                case 'ketogenic':
+                    calorieGoal = tdee - 300;
+                    goalDescription = "Keto-Adaptation";
+                    break;
+            }
+
+            bmrValue.innerText = Math.round(bmr).toLocaleString();
+            tdeeValue.innerText = Math.round(tdee).toLocaleString();
+            targetCalories.innerText = Math.round(calorieGoal).toLocaleString();
+            selectedGoalLabel.innerText = goalDescription;
+
+            // --- CALCULATOR 5: MACRONUTRIENT DISTRIBUTION ---
+            let pPct = 25, cPct = 45, fPct = 30;
+
+            if (goal === 'weight_loss') {
+                pPct = 30; cPct = 40; fPct = 30;
+            } else if (goal === 'muscle_gain') {
+                pPct = 30; cPct = 50; fPct = 20;
+            } else if (goal === 'low_carb') {
+                pPct = 35; cPct = 20; fPct = 45;
+            } else if (goal === 'ketogenic') {
+                pPct = 20; cPct = 5; fPct = 75;
+            }
+
+            const pKcal = calorieGoal * (pPct / 100);
+            const cKcal = calorieGoal * (cPct / 100);
+            const fKcal = calorieGoal * (fPct / 100);
+
+            const pGrams = pKcal / 4;
+            const cGrams = cKcal / 4;
+            const fGrams = fKcal / 9;
+
+            proteinSplitText.innerText = `${Math.round(pGrams)}g / ${Math.round(pKcal)} kcal (${pPct}%)`;
+            proteinProgress.style.width = `${pPct}%`;
+
+            carbSplitText.innerText = `${Math.round(cGrams)}g / ${Math.round(cKcal)} kcal (${cPct}%)`;
+            carbProgress.style.width = `${cPct}%`;
+
+            fatSplitText.innerText = `${Math.round(fGrams)}g / ${Math.round(fKcal)} kcal (${fPct}%)`;
+            fatProgress.style.width = `${fPct}%`;
+
+            calculationsCache = {
+                subjectName: subjectNameInput.value.trim() || "John Doe",
+                subjectEmail: subjectEmailInput.value.trim() || "johndoe@example.com",
+                sex: sex,
+                age: age,
+                height: heightCm.toFixed(1) + " cm",
+                weight: weightKg.toFixed(1) + " kg",
+                bmi: bmi.toFixed(1),
+                bmiClass: bmiClassification,
+                whr: whr.toFixed(2),
+                whrClass: whrClassification,
+                whtr: whtr.toFixed(2),
+                whtrClass: whtrClassification,
+                asIndex: asIndex.toFixed(1) + " " + asUnit,
+                asIndexClassification: asClass,
+                bodyFatPercentage: bodyFatPct.toFixed(1) + "%",
+                bodyFatClassification: fatClassification,
+                leanBodyMass: leanMassKg.toFixed(1) + " kg",
+                fatMass: fatMassKg.toFixed(1) + " kg",
+                bmr: Math.round(bmr) + " kcal",
+                tdee: Math.round(tdee) + " kcal",
+                calorieGoal: Math.round(calorieGoal) + " kcal",
+                goal: goalDescription,
+                activity: document.querySelector('input[name="activity"]:checked')?.parentElement?.querySelector('.font-bold')?.innerText || "Detailed Allocation",
+                palValue: pal.toFixed(3),
+                loggedActiveBurn: totalActiveBurn + " kcal",
+                loggedWorkouts: exerciseLogs.map(w => `${w.name} (${w.duration} mins, ${w.calories} kcal)`),
+                macros: {
+                    protein: `${Math.round(pGrams)}g (${pPct}%)`,
+                    carbs: `${Math.round(cGrams)}g (${cPct}%)`,
+                    fats: `${Math.round(fGrams)}g (${fPct}%)`
+                }
+            };
+        }
+
+        // --- GEMINI 2.5 FLASH RETRY & BACKOFF LOGIC ---
+        async function fetchGeminiWithBackoff(prompt, sysInstruction = "") {
+            let activeApiKey = userDefinedApiKey || apiKey;
+            
+            if (!activeApiKey) {
+                activeApiKey = promptUserForKey();
+                if (!activeApiKey) {
+                    throw new Error("API Key is missing. Please click the settings icon at the top right to configure your Gemini API Key.");
+                }
+            }
+
+            // DYNAMIC RESOLUTION: Use globally stable 'gemini-2.5-flash' for custom developer keys,
+            // and keep internal 'gemini-2.5-flash-preview-09-2025' for system injected calls.
+            const modelName = userDefinedApiKey ? "gemini-2.5-flash" : "gemini-2.5-flash-preview-09-2025";
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeApiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }]
+            };
+
+            if (sysInstruction) {
+                payload.systemInstruction = {
+                    parts: [{ text: sysInstruction }]
+                };
+            }
+
+            let delay = 1000;
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        const json = await response.json();
+                        const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (!text) throw new Error("No text content returned from model.");
+                        return text;
+                    }
+
+                    if (response.status === 429 || response.status >= 500) {
+                        // Exponential backoff retry
+                    } else {
+                        const errText = await response.text();
+                        throw new Error(`Gemini Error (${response.status}): ${errText}`);
+                    }
+                } catch (err) {
+                    if (i === 4) throw err;
+                }
+
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2;
+            }
+            throw new Error("Request failed after 5 retries");
+        }
+
+        function promptUserForKey() {
+            settingsPanel.classList.remove('hidden');
+            customApiKey.focus();
+            return "";
+        }
+
+        // --- GENERATE PLAN TRIGGER ---
+        generatePlanBtn.addEventListener('click', async () => {
+            generatePlanBtn.classList.add('hidden');
+            aiLoader.classList.remove('hidden');
+            aiOutputContainer.classList.add('hidden');
+
+            const healthDataStr = JSON.stringify(calculationsCache, null, 2);
+            
+            const prompt = `Analyze the following calculated clinical, body composition, active workout log, and bio-nutritional data:
+${healthDataStr}
+
+Please generate an expert, comprehensive, and scientifically grounded wellness strategy including:
+1. Medical/Obesity Risk & Body Composition Analysis: Assess BMI (using our classifications: Underweight, Normal, Over-weight, Obesity Type 1, Obesity Type 2, Obesity Type 3), AS Index (Adiposity Shape Index), Body Fat Percentage (categorized using ACE guidelines), Lean Body Mass vs Fat Mass distribution, and corresponding waist ratios. Also evaluate the user's calculated Physical Activity Level (PAL) value. Give a realistic medical explanation.
+2. 7-Day Meal Strategy Outline: High level distribution of food groups matching the target macros and accommodating logged exercises and lean muscle preservation targets.
+3. Workout & Dynamic Movement Schedule: Integrate details from their current Logged Workouts and overall goal.
+4. Professional Health & Accountability Advice.
+
+Format your response using beautifully spaced Markdown with bold headers and clean lists so it renders perfectly on the dashboard. Keep it highly personalized, encouraging, and clear.`;
+
+            const systemPrompt = "You are an elite, double-certified Clinical Dietitian, Exercise Physiologist, and Metabolic Expert. You use exact science, avoid fad diets, and formulate structured, customized plans.";
+
+            try {
+                const markdownText = await fetchGeminiWithBackoff(prompt, systemPrompt);
+                generatedAiPlanRaw = markdownText;
+                aiPlanOutput.innerHTML = parseMarkdownToHTML(markdownText);
+                aiOutputContainer.classList.remove('hidden');
+                generatePlanBtn.innerText = "Regenerate Strategy";
+            } catch (err) {
+                showCustomMessageBox(`Could not generate plan: ${err.message}`, 'error');
+            } finally {
+                aiLoader.classList.add('hidden');
+                generatePlanBtn.classList.remove('hidden');
+            }
+        });
+
+        // --- GOOGLE SHEETS POST SCRIPT SYNC ---
+        async function syncToGoogleSheets(payload) {
+            if (!googleSheetsWebAppUrl) return; // Silent return if not linked
+
+            try {
+                // Perform simple JSON POST request to Web App macro script
+                const response = await fetch(googleSheetsWebAppUrl, {
+                    method: 'POST',
+                    mode: 'no-cors', // standard workaround for Google CORS macro limitations
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                showCustomMessageBox("Diagnostics synced to Google Sheet successfully!", "success");
+            } catch (e) {
+                console.error("Sheets integration sync failed:", e);
+                showCustomMessageBox("Subject saved locally, but failed to sync to Google Sheet.", "error");
+            }
+        }
+
+        // --- SUBJECT PERSISTENCE DATABASE CONTROLLER ---
+        saveSubjectBtn.addEventListener('click', async () => {
+            recalculateHealthSuite(); // sync state
+
+            const name = subjectNameInput.value.trim();
+            const email = subjectEmailInput.value.trim();
+
+            if (!name || !email) {
+                showCustomMessageBox("Subject Name and Email ID are mandatory to register records.", "error");
+                return;
+            }
+
+            const targetSystem = currentSystem;
+            const targetGender = document.querySelector('input[name="sex"]:checked').value;
+            const currentAge = parseInt(inputAge.value) || 25;
+
+            // Compile complete diagnostic state including detailed PAL inputs
+            const payload = {
+                subjectName: name,
+                subjectEmail: email,
+                system: targetSystem,
+                sex: targetGender,
+                age: currentAge,
+                goal: fitnessGoal.value,
+                palMode: currentPalCalculationMode,
+                pal: parseFloat(calculationsCache.palValue),
+                // Detailed PAL allocation states
+                palHrsSleep: parseFloat(hrsSleep.value),
+                palHrsLight: parseFloat(hrsLight.value),
+                palHrsModerate: parseFloat(hrsModerate.value),
+                palHrsVigorous: parseFloat(hrsVigorous.value),
+                // Core physical configurations
+                weight: parseFloat(inputWeight.value) || 70,
+                waist: parseFloat(inputWaist.value) || 80,
+                hip: parseFloat(inputHip.value) || 90,
+                neck: parseFloat(inputNeck.value) || 38,
+                heightCm: parseFloat(inputHeightCm.value) || 170,
+                heightFt: parseInt(inputHeightFt.value) || 5,
+                heightIn: parseInt(inputHeightIn.value) || 7,
+                exerciseLogs: exerciseLogs,
+                calculations: calculationsCache,
+                updatedAt: isFirebaseActive ? serverTimestamp() : Date.now()
+            };
+
+            // 1. Sync to Firestore Cloud if active
+            if (isFirebaseActive) {
+                try {
+                    const escapedEmailId = email.toLowerCase().replace(/[^a-z0-9]/gi, '_');
+                    const subjectDocRef = doc(firestoreInstance, 'artifacts', appIdValue, 'public', 'data', 'subjects', escapedEmailId);
+                    
+                    await setDoc(subjectDocRef, payload);
+                    showCustomMessageBox(`Securely saved profile for ${name} to Cloud Directory.`, "success");
+                } catch (e) {
+                    showCustomMessageBox(`Failed to sync to Cloud Database: ${e.message}`, "error");
+                }
+            } else {
+                // Fallback to local session persistence
+                const index = localSubjectsRegistry.findIndex(s => s.subjectEmail.toLowerCase() === email.toLowerCase());
+                if (index > -1) {
+                    localSubjectsRegistry[index] = { id: email.toLowerCase(), ...payload };
+                } else {
+                    localSubjectsRegistry.push({ id: email.toLowerCase(), ...payload });
+                }
+                renderSubjectsRegistry();
+                showCustomMessageBox(`Saved profile for ${name} in Local Session Memory.`, "success");
+            }
+
+            // 2. Stream and Sync to Google Sheet if Web App URL is present
+            if (googleSheetsWebAppUrl) {
+                await syncToGoogleSheets(payload);
+            }
+        });
+
+        // Registry Search Listener
+        searchRegistry.addEventListener('input', (e) => {
+            registryFilterQuery = e.target.value.trim().toLowerCase();
+            renderSubjectsRegistry();
+        });
+
+        function renderSubjectsRegistry() {
+            if (localSubjectsRegistry.length === 0) {
+                registryTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-8 text-slate-400 italic">No clinical subjects currently saved. Click "Save / Update Current Subject" above.</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const filteredList = localSubjectsRegistry.filter(sub => {
+                return sub.subjectName.toLowerCase().includes(registryFilterQuery) || 
+                       sub.subjectEmail.toLowerCase().includes(registryFilterQuery);
+            });
+
+            if (filteredList.length === 0) {
+                registryTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-8 text-slate-400 italic">No saved subjects match your search queries.</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            registryTableBody.innerHTML = "";
+            filteredList.forEach(sub => {
+                const calc = sub.calculations || {};
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 dark:hover:bg-slate-900 transition text-[11px]";
+                
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-bold text-slate-800 dark:text-slate-100 text-left">
+                        <span class="block">${sub.subjectName}</span>
+                        <span class="text-[9px] text-slate-400 font-normal block">${sub.subjectEmail}</span>
+                    </td>
+                    <td class="py-3 px-4 capitalize font-semibold">${sub.sex} / ${sub.age} yrs</td>
+                    <td class="py-3 px-4 font-extrabold text-slate-700 dark:text-slate-200">
+                        <span>${calc.bmi || 'N/A'}</span>
+                        <span class="text-[9px] font-normal block text-slate-400">${calc.bmiClass || 'N/A'}</span>
+                    </td>
+                    <td class="py-3 px-4 font-extrabold text-purple-600 dark:text-purple-400">${calc.bodyFatPercentage || 'N/A'}</td>
+                    <td class="py-3 px-4 font-semibold text-brand-600 dark:text-brand-400">${calc.asIndexClassification || 'N/A'}</td>
+                    <td class="py-3 px-4 font-medium max-w-[120px] truncate" title="${calc.goal || 'N/A'}">${calc.goal || 'N/A'}</td>
+                    <td class="py-3 px-4 font-extrabold text-indigo-600 dark:text-indigo-400">${calc.calorieGoal || 'N/A'}</td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <button onclick="loadSubjectProfile('${sub.id}')" class="p-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg transition" title="Recall Subject Diagnostics">
+                                <i data-lucide="play" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <div class="flex gap-1 border border-slate-200 dark:border-slate-800 rounded-lg p-0.5 bg-slate-50 dark:bg-slate-950">
+                                <button onclick="downloadSubjectImage('${sub.id}', 'en')" class="px-1 text-[9px] font-black text-slate-500 hover:text-indigo-600 transition uppercase" title="Download Report EN Image">
+                                    EN
+                                </button>
+                                <span class="text-slate-300">|</span>
+                                <button onclick="downloadSubjectImage('${sub.id}', 'ar')" class="px-1 py-0.5 bg-purple-500 hover:bg-purple-600 text-white rounded text-[9px] font-bold transition" title="تحميل التقرير كصورة عربية">
+                                    AR
+                                </button>
+                            </div>
+                            <button onclick="deleteSubjectProfile('${sub.id}')" class="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 dark:bg-red-950/40 dark:text-red-400 rounded-lg transition" title="Delete Profile">
+                                <i data-lucide="trash" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                registryTableBody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        // Action: Load clinical profile back to interactive inputs
+        async function loadSubjectProfile(id) {
+            const profile = localSubjectsRegistry.find(sub => sub.id === id);
+            if (!profile) return;
+
+            // Trigger unit configuration first
+            if (profile.system !== currentSystem) {
+                if (profile.system === 'metric') {
+                    unitMetric.click();
+                } else {
+                    unitImperial.click();
+                }
+            }
+
+            // Sync inputs securely
+            subjectNameInput.value = profile.subjectName;
+            subjectEmailInput.value = profile.subjectEmail;
+            inputAge.value = profile.age;
+            fitnessGoal.value = profile.goal;
+
+            // Radio Gender
+            document.querySelectorAll('input[name="sex"]').forEach(radio => {
+                radio.checked = (radio.value === profile.sex);
+            });
+
+            // Height and Weights
+            if (profile.system === 'metric') {
+                inputHeightCm.value = profile.heightCm;
+            } else {
+                inputHeightFt.value = profile.heightFt;
+                inputHeightIn.value = profile.heightIn;
+            }
+            inputWeight.value = profile.weight;
+            inputWaist.value = profile.waist;
+            inputHip.value = profile.hip;
+            inputNeck.value = profile.neck;
+
+            // Handle PAL mode switching and restoration
+            if (profile.palMode === 'detailed') {
+                hrsSleep.value = profile.palHrsSleep || 8;
+                hrsLight.value = profile.palHrsLight || 10;
+                hrsModerate.value = profile.palHrsModerate || 5;
+                hrsVigorous.value = profile.palHrsVigorous || 1;
+                tabPalDetailed.click();
+            } else {
+                document.querySelectorAll('input[name="activity"]').forEach(radio => {
+                    radio.checked = (parseFloat(radio.value) === profile.pal);
+                });
+                tabPalQuick.click();
+            }
+
+            // Workout logs
+            exerciseLogs = profile.exerciseLogs || [];
+            renderWorkoutLogs();
+
+            recalculateHealthSuite();
+            showCustomMessageBox(`Diagnostic measurements for ${profile.subjectName} successfully loaded.`, "success");
+        }
+
+        // Action: Delete subject profile record
+        async function deleteSubjectProfile(id) {
+            const item = localSubjectsRegistry.find(s => s.id === id);
+            const label = item ? item.subjectName : "Subject";
+
+            if (isFirebaseActive) {
+                try {
+                    const subjectDocRef = doc(firestoreInstance, 'artifacts', appIdValue, 'public', 'data', 'subjects', id);
+                    await deleteDoc(subjectDocRef);
+                    showCustomMessageBox(`Deleted ${label} from Cloud Directory.`, "success");
+                } catch (e) {
+                    showCustomMessageBox(`Failed to delete record: ${e.message}`, "error");
+                }
+            } else {
+                localSubjectsRegistry = localSubjectsRegistry.filter(s => s.id !== id);
+                renderSubjectsRegistry();
+                showCustomMessageBox(`Deleted ${label} from Local Session memory.`, "success");
+            }
+        }
+
+        // Action: Compile individual subject report on-the-fly and download as a formatted PNG Image (Arabic or English)
+        function downloadSubjectImage(id, langCode = 'ar') {
+            const profile = localSubjectsRegistry.find(sub => sub.id === id);
+            if (!profile) return;
+
+            const calc = profile.calculations || {};
+            const leanMassKgVal = parseFloat(calc.leanBodyMass) || 0;
+            const fatMassKgVal = parseFloat(calc.fatMass) || 0;
+
+            const printElement = document.createElement('div');
+            printElement.style.padding = "35px";
+            printElement.style.backgroundColor = "#ffffff";
+            printElement.style.color = "#0f172a";
+            printElement.style.width = "720px"; // Ensure perfect standard A4 fit
+            printElement.style.boxSizing = "border-box";
+            
+            // Apply language layout direction
+            const isAr = (langCode === 'ar');
+            printElement.dir = isAr ? "rtl" : "ltr";
+            printElement.style.textAlign = isAr ? "right" : "left";
+
+            const generatedDate = new Date().toLocaleDateString(isAr ? 'ar-EG' : 'en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+
+            // Dictionary mappings for complete translations
+            const dictionary = {
+                ar: {
+                    title: "ملخص تقرير الذكاء الصحي والتحليل البدني",
+                    subtitle: "تقرير فيزيولوجي رقمي متكامل",
+                    suite: "مجموعة الذكاء الصحي",
+                    dateLabel: "تاريخ التقرير",
+                    sec1: "أولاً: بيانات الخاضع للفحص",
+                    nameLabel: "اسم الخاضع للفحص:",
+                    emailLabel: "البريد الإلكتروني:",
+                    sexLabel: "الجنس البيولوجي:",
+                    ageLabel: "العمر:",
+                    heightLabel: "الطول:",
+                    weightLabel: "الوزن:",
+                    sec2: "ثانياً: مؤشرات السمنة وتركيب الجسم",
+                    thMetric: "المؤشر الفيزيولوجي",
+                    thValue: "القيمة المسجلة",
+                    thClass: "التصنيف والمخاطر",
+                    bmiLabel: "مؤشر كتلة الجسم (BMI)",
+                    fatPctLabel: "نسبة الدهون بالجسم",
+                    whrLabel: "نسبة الخصر إلى الورك (WHR)",
+                    whtrLabel: "نسبة الخصر إلى الطول (WHtR)",
+                    asIndexLabel: "مؤشر شكل السمنة (AS Index)",
+                    lbmLabel: "الكتلة العضلية الخالية من الدهون:",
+                    fatLabel: "كتلة الدهون المخزنة:",
+                    sec3: "ثالثاً: معدل الأيض والاحتياج اليومي",
+                    sec4: "رابعاً: توزيع المغذيات الكبرى",
+                    bmr: "BMR (معدل الأيض الأساسي):",
+                    tdee: "TDEE (معدل الحرق اليومي):",
+                    calorieGoal: "السعرات المستهدفة:",
+                    protein: "البروتين المستهدف:",
+                    carbs: "الكربوهيدرات المستهدفة:",
+                    fats: "الدهون الصحية:",
+                    sec5: "خامساً: السجل الرياضي ومعدل النشاط (PAL)",
+                    palLabel: "قيمة مستوى النشاط البدني (PAL):",
+                    palModelDetailed: "نموذج منظمة الصحة العالمية 24 ساعة",
+                    palModelQuick: "تقدير سريع",
+                    noExercises: "لا توجد تمارين رياضية مسجلة لهذا اليوم.",
+                    exerciseMins: "دقيقة",
+                    exerciseBurn: "سعرة حرارية",
+                    footer: "تم الحصول على هذه الحسابات والبيانات من خلال النماذج والمعادلات الطبية المعتمدة مثل Mifflin-St Jeor و معادلة البحرية الأمريكية لحساب الدهون ومستوى النشاط البدني للـ FAO/WHO/UNU.<br/>جميع الحقوق محفوظة لمجموعة Health Intelligence Suite &copy; 2026."
+                },
+                en: {
+                    title: "Health Intelligence & Physical Analysis Summary",
+                    subtitle: "Integrated Digital Physiological Report",
+                    suite: "Health Intelligence Group",
+                    dateLabel: "Report Date",
+                    sec1: "I. Subject Profile Details",
+                    nameLabel: "Subject Name:",
+                    emailLabel: "Email ID:",
+                    sexLabel: "Biological Sex:",
+                    ageLabel: "Age:",
+                    heightLabel: "Height:",
+                    weightLabel: "Weight:",
+                    sec2: "II. Obesity Indicators & Body Composition",
+                    thMetric: "Physiological Marker",
+                    thValue: "Recorded Value",
+                    thClass: "Classification & Risks",
+                    bmiLabel: "Body Mass Index (BMI)",
+                    fatPctLabel: "Body Fat Percentage",
+                    whrLabel: "Waist-to-Hip Ratio (WHR)",
+                    whtrLabel: "Waist-to-Height Ratio (WHtR)",
+                    asIndexLabel: "AS Index (Hip - Waist)",
+                    lbmLabel: "Lean Body Mass (Active tissues):",
+                    fatLabel: "Stored Fat Mass:",
+                    sec3: "III. Metabolic Demands & Daily BMR",
+                    sec4: "IV. Macronutrients Targets Distributions",
+                    bmr: "Basal Metabolic Rate (BMR):",
+                    tdee: "Total Daily Burn (TDEE):",
+                    calorieGoal: "Target Calories:",
+                    protein: "Protein Target:",
+                    carbs: "Carbs Target:",
+                    fats: "Fats Target:",
+                    sec5: "V. Daily Physical Activity Log & PAL Multiplier",
+                    palLabel: "Approved PAL Factor:",
+                    palModelDetailed: "FAO/WHO 24h Recall Model",
+                    palModelQuick: "Quick Estimation",
+                    noExercises: "No additional exercises logged for today.",
+                    exerciseMins: "mins",
+                    exerciseBurn: "kcal",
+                    footer: "Calculations and body composition profiles derived using verified clinical equations including Mifflin-St Jeor, U.S. Navy Circumference formula, and WHO/UNU time-allocation metrics.<br/>Calculated by MY Health Intelligence &copy; 2026. Tabuk, Saudi Arabia."
+                }
+            };
+
+            const t = isAr ? dictionary.ar : dictionary.en;
+
+            printElement.innerHTML = `
+                <!-- Image Header -->
+                <div style="border-bottom: 3px solid #16a34a; padding-bottom: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; direction: ${isAr ? 'rtl' : 'ltr'};">
+                    <div style="text-align: ${isAr ? 'right' : 'left'}; float: ${isAr ? 'right' : 'left'};">
+                        <h1 style="font-size: 18px; font-weight: 800; color: #15803d; margin: 0; font-family: sans-serif;">${t.title}</h1>
+                        <span style="font-size: 10px; font-weight: 600; color: #64748b;">${t.subtitle}</span>
+                    </div>
+                    <div style="text-align: ${isAr ? 'left' : 'right'}; float: ${isAr ? 'left' : 'right'};">
+                        <span style="font-size: 11px; font-weight: bold; color: #1e293b; display: block;">${t.suite}</span>
+                        <span style="font-size: 9px; color: #94a3b8;">${t.dateLabel}: ${generatedDate}</span>
+                    </div>
+                    <div style="clear: both;"></div>
+                </div>
+
+                <!-- Section 1: Subject Metadata -->
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 16px; direction: ${isAr ? 'rtl' : 'ltr'}; text-align: ${isAr ? 'right' : 'left'};">
+                    <h3 style="font-size: 12px; font-weight: 700; color: #1e293b; border-bottom: 1px dashed #cbd5e1; padding-bottom: 5px; margin-bottom: 10px; margin-top: 0;">${t.sec1}</h3>
+                    <table style="width: 100%; font-size: 10px; border-collapse: collapse; text-align: ${isAr ? 'right' : 'left'};">
+                        <tr>
+                            <td style="padding: 4px; font-weight: bold; color: #64748b; width: 25%;">اسم الخاضع للفحص:</td>
+                            <td style="padding: 4px; font-weight: 800; color: #0f172a;">${profile.subjectName}</td>
+                            <td style="padding: 4px; font-weight: bold; color: #64748b; width: 25%;">البريد الإلكتروني:</td>
+                            <td style="padding: 4px; font-weight: 800; color: #0f172a;">${profile.subjectEmail}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px; font-weight: bold; color: #64748b;">الجنس البيولوجي:</td>
+                            <td style="padding: 4px; font-weight: 800; color: #0f172a;">${profile.sex === 'male' ? (isAr ? 'ذكر' : 'Male') : (isAr ? 'أنثى' : 'Female')}</td>
+                            <td style="padding: 4px; font-weight: bold; color: #64748b;">${t.ageLabel}</td>
+                            <td style="padding: 4px; font-weight: 800; color: #0f172a;">${profile.age} ${profile.system === 'metric' ? (isAr ? 'عاماً' : 'yrs') : (isAr ? 'عاماً' : 'yrs')}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 4px; font-weight: bold; color: #64748b;">${t.heightLabel}</td>
+                            <td style="padding: 4px; font-weight: 800; color: #0f172a;">${profile.heightCm || calc.height || 'N/A'}</td>
+                            <td style="padding: 4px; font-weight: bold; color: #64748b;">${t.weightLabel}</td>
+                            <td style="padding: 4px; font-weight: 800; color: #0f172a;">${profile.weight} ${profile.system === 'metric' ? (isAr ? 'كجم' : 'kg') : (isAr ? 'رطل' : 'lbs')}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Section 2: Clinical Obesity & Body Composition -->
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 16px; direction: ${isAr ? 'rtl' : 'ltr'}; text-align: ${isAr ? 'right' : 'left'};">
+                    <h3 style="font-size: 12px; font-weight: 700; color: #1e293b; border-bottom: 1px dashed #cbd5e1; padding-bottom: 5px; margin-bottom: 10px; margin-top: 0;">${t.sec2}</h3>
+                    <table style="width: 100%; font-size: 10px; border-collapse: collapse; text-align: ${isAr ? 'right' : 'left'}; margin-bottom: 12px;">
+                        <thead>
+                            <tr style="background-color: #f1f5f9;">
+                                <th style="padding: 6px; border: 1px solid #e2e8f0; font-weight: bold; color: #475569;">${t.thMetric}</th>
+                                <th style="padding: 6px; border: 1px solid #e2e8f0; font-weight: bold; color: #475569;">${t.thValue}</th>
+                                <th style="padding: 6px; border: 1px solid #e2e8f0; font-weight: bold; color: #475569;">${t.thClass}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight: 600;">${t.bmiLabel}</td>
+                                <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight: 800;">${calc.bmi}</td>
+                                <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight: bold; color: #b45309;">${getTranslatedValue(calc.bmiClass, langCode)}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight: 600;">${t.fatPctLabel}</td>
+                                <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight: 800;">${calc.bodyFatPercentage}</td>
+                                <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight: bold; color: #7c3aed;">${getTranslatedValue(calc.bodyFatClassification, langCode)}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight: 600;">${t.whrLabel}</td>
+                                <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight: 800;">${calc.whr}</td>
+                                <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight: bold; color: #b45309;">${getTranslatedValue(calc.whrClass, langCode)}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight: 600;">${t.whtrLabel}</td>
+                                <td style="padding: 6px; border: 1px solid #e2e8f0; font-weight: 800;">${calc.whtr}</td>
+                                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #b45309;">${getTranslatedValue(calc.whtrClass, langCode)}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: 600;">${t.asIndexLabel}</td>
+                                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: 800;">${calc.asIndex}</td>
+                                <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; color: #16a34a;">${getTranslatedValue(calc.asIndexClassification, langCode)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div style="background-color: #faf5ff; border: 1px solid #f3e8ff; border-radius: 8px; padding: 10px; font-size: 10px; direction: ${isAr ? 'rtl' : 'ltr'};">
+                        <span style="color: #16a34a; font-weight: bold; float: ${isAr ? 'right' : 'left'};">${t.lbmLabel} ${dataStrLbm(leanMassKgVal)}</span>
+                        <span style="color: #7c3aed; font-weight: bold; float: ${isAr ? 'left' : 'right'};">${t.fatLabel} ${dataStrFat(fatMassKgVal)}</span>
+                        <div style="clear: both;"></div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Metabolism & Caloric Targets -->
+                <div style="margin-bottom: 16px; direction: ${isAr ? 'rtl' : 'ltr'};">
+                    <div style="width: 48%; float: ${isAr ? 'right' : 'left'}; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; box-sizing: border-box; text-align: right;">
+                        <h4 style="font-size: 11px; font-weight: bold; color: #475569; margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">${t.sec3}</h4>
+                        <div style="font-size: 10px; line-height: 1.8;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>${t.bmr}</span>
+                                <strong>${dataValueFormatter(calc.bmr)}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                                <span>${t.tdee}</span>
+                                <strong>${dataValueFormatter(calc.tdee)}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 6px; border-top: 1px solid #e2e8f0; padding-top: 6px; font-size: 11px; font-weight: bold;">
+                                <span style="color: #15803d;">${t.calorieGoal}</span>
+                                <strong style="color: #15803d;">${dataValueFormatter(calc.calorieGoal)}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="width: 48%; float: ${isAr ? 'left' : 'right'}; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; box-sizing: border-box; text-align: right;">
+                        <h4 style="font-size: 12px; font-weight: bold; color: #475569; margin-top: 0; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">${t.sec4}</h4>
+                        <div style="font-size: 10px; line-height: 1.8;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>${t.protein}</span>
+                                <strong>${dataValueFormatter(calc.macros?.protein)}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                                <span>${t.carbs}</span>
+                                <strong>${dataValueFormatter(calc.macros?.carbs)}</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+                                <span>${t.fats}</span>
+                                <strong>${dataValueFormatter(calc.macros?.fats)}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="clear: both;"></div>
+                </div>
+
+                <!-- Section 4: Logged Activities -->
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; margin-bottom: 20px; direction: ${isAr ? 'rtl' : 'ltr'}; text-align: right;">
+                    <h3 style="font-size: 13px; font-weight: bold; color: #1e293b; margin-top: 0; margin-bottom: 8px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 5px;">${t.sec5}</h3>
+                    <div style="font-size: 10px; line-height: 1.6;">
+                        <div style="margin-bottom: 8px;"><strong>${t.palLabel}</strong> <span class="text-brand-600 font-bold">${calc.palValue || '1.375'}</span> (${profile.palMode === 'detailed' ? t.palModelDetailed : t.palModelQuick})</div>
+                        ${(profile.exerciseLogs || []).length === 0 ? `<span style="color: #94a3b8; font-style: italic;">${t.noExercises}</span>` : 
+                        `<ul style="margin: 0; padding-right: 15px;">
+                            ${profile.exerciseLogs.map(w => `<li style="margin-bottom: 4px;"><strong>${w.name}</strong> - المدة: ${w.duration} ${isAr ? t.exerciseMins : 'mins'} &bull; الطاقة المستهلكة: <span style="color: #0284c7; font-weight: bold;">${w.calories} ${isAr ? t.exerciseBurn : 'kcal'}</span></li>`).join('')}
+                         </ul>`
+                        }
+                    </div>
+                </div>
+
+                <!-- Scientific Citations Page Footer -->
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 15px; text-align: center; font-size: 9px; color: #94a3b8; line-height: 1.4; direction: rtl;">
+                    ${t.footer}
+                </div>
+            `;
+
+            // Helper formatters
+            function dataStrLbm(weight) {
+                if (isAr) {
+                    return profile.system === 'metric' ? `${weight.toFixed(1)} كجم` : `${(weight * 2.20462).toFixed(1)} رطل`;
+                } else {
+                    return profile.system === 'metric' ? `${weight.toFixed(1)} kg` : `${(weight * 2.20462).toFixed(1)} lbs`;
+                }
+            }
+            function dataStrFat(weight) {
+                if (isAr) {
+                    return profile.system === 'metric' ? `${weight.toFixed(1)} كجم` : `${(weight * 2.20462).toFixed(1)} رطل`;
+                } else {
+                    return profile.system === 'metric' ? `${weight.toFixed(1)} kg` : `${(weight * 2.20462).toFixed(1)} lbs`;
+                }
+            }
+            function dataValueFormatter(val) {
+                return val ? val : "N/A";
+            }
+
+            // Create a fully visible but out-of-screen element to guarantee painting & rendering
+            const printWrapper = document.createElement('div');
+            printWrapper.style.position = 'absolute';
+            printWrapper.style.left = '50000px';
+            printWrapper.style.top = '0px';
+            printWrapper.style.margin = '0';
+            printWrapper.style.padding = '0';
+            printWrapper.appendChild(printElement);
+            document.body.appendChild(printWrapper);
+
+            const filename = `health_report_${profile.subjectName.replace(/\s+/g, '_')}_${langCode}.png`;
+
+            // Execute html2canvas render pass
+            html2canvas(printElement, {
+                useCORS: true,
+                scale: 2,
+                logging: false,
+                backgroundColor: "#ffffff"
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                
+                const link = document.createElement('a');
+                link.href = imgData;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                document.body.removeChild(printWrapper); // Clean up safely
+                showCustomMessageBox(isAr ? `تم تحميل التقرير لـ ${profile.subjectName} كصورة بنجاح!` : `Successfully downloaded diagnostic image report for ${profile.subjectName}!`, "success");
+            }).catch(err => {
+                if (printWrapper.parentNode) {
+                    document.body.removeChild(printWrapper); // Secure clean up on error
+                }
+                showCustomMessageBox(`Failed to export image report: ${err.message}`, "error");
+            });
+        }
+
+        // --- GOOGLE SHEETS SETUP GUIDE DYNAMIC HANDLERS ---
+        openSheetsGuide.addEventListener('click', () => {
+            sheetsGuideModal.classList.remove('hidden');
+        });
+
+        closeSheetsGuide.addEventListener('click', () => {
+            sheetsGuideModal.classList.add('hidden');
+        });
+
+        copyAppsScriptBtn.addEventListener('click', () => {
+            const scriptCode = appsScriptTemplate.innerText;
+            const tempTextArea = document.createElement("textarea");
+            tempTextArea.value = scriptCode;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+            showCustomMessageBox("Apps Script template copied to clipboard!", "success");
+        });
+
+        // Close guide modal when clicking backdrop
+        sheetsGuideModal.addEventListener('click', (e) => {
+            if (e.target === sheetsGuideModal) {
+                sheetsGuideModal.classList.add('hidden');
+            }
+        });
+
+        // --- CORE HELPER FUNCTIONS & RENDERING UTILITIES ---
+        function parseMarkdownToHTML(markdown) {
+            let html = markdown
+                .replace(/^### (.*$)/gim, '<h4 class="text-sm font-bold text-slate-800 dark:text-white mt-4 mb-2">$1</h4>')
+                .replace(/^## (.*$)/gim, '<h3 class="text-base font-extrabold text-indigo-600 dark:text-indigo-400 mt-5 mb-2">$1</h3>')
+                .replace(/^# (.*$)/gim, '<h2 class="text-lg font-black text-slate-900 dark:text-white mt-6 mb-3">$1</h2>')
+                .replace(/^\* (.*$)/gim, '<li class="ml-4 list-disc text-xs text-slate-600 dark:text-slate-300">$1</li>')
+                .replace(/^- (.*$)/gim, '<li class="ml-4 list-disc text-xs text-slate-600 dark:text-slate-300">$1</li>')
+                .replace(/\*\*(.*?)\*\"/g, '<strong class="font-bold text-slate-800 dark:text-white">$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+                .replace(/\n$/gim, '<br />');
+            return html;
+        }
+
+        function appendChatMessage(sender, text, type) {
+            const id = "msg_" + Date.now();
+            const div = document.createElement("div");
+            div.id = id;
+            div.className = "p-3 rounded-xl text-xs leading-relaxed transition-all ";
+            
+            if (type === "user") {
+                div.className += "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 border-l-4 border-indigo-500 self-end ml-6";
+                div.innerHTML = `<span class="font-bold block mb-0.5 text-[10px] text-indigo-500">You</span> ${text}`;
+            } else if (type === "coach") {
+                div.className += "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200 border-l-4 border-emerald-500 mr-6";
+                div.innerHTML = `<span class="font-bold block mb-0.5 text-[10px] text-emerald-500">Coach</span> ${text}`;
+            } else if (type === "coach-thinking") {
+                div.className += "bg-slate-100 dark:bg-slate-800 text-slate-400 italic mr-6 animate-pulse";
+                div.innerHTML = `${text}`;
+            } else {
+                div.className += "bg-red-50 dark:bg-red-950/30 text-red-600 border border-red-200 mr-6";
+                div.innerHTML = `${text}`;
+            }
+
+            chatHistory.appendChild(div);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            return id;
+        }
+
+        function removeChatMessage(id) {
+            const elem = document.getElementById(id);
+            if (elem) elem.remove();
+        }
+
+        function showCustomMessageBox(msg, type = "success") {
+            const box = document.createElement("div");
+            box.className = `fixed bottom-6 right-6 z-50 p-4 rounded-2xl shadow-xl flex items-center gap-3 transition-all duration-300 transform translate-y-10 opacity-0 border max-w-sm text-sm font-semibold `;
+            
+            if (type === "success") {
+                box.className += "bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-slate-900 dark:border-emerald-900 dark:text-emerald-300";
+                box.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5 text-brand-500 flex-shrink-0"></i> <span>${msg}</span>`;
+            } else {
+                box.className += "bg-red-50 border-red-200 text-red-800 dark:bg-slate-900 dark:border-red-950 dark:text-red-300";
+                box.innerHTML = `<i data-lucide="alert-triangle" class="w-5 h-5 text-red-500 flex-shrink-0"></i> <span>${msg}</span>`;
+            }
+
+            document.body.appendChild(box);
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                box.classList.remove('translate-y-10', 'opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                box.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => box.remove(), 300);
+            }, 4500);
+        }
+
+        // --- TRANSLATOR TRANSLATION DICTIONARY MAPS ---
+        function getTranslatedValue(val, targetLang) {
+            if (targetLang === 'en') return val;
+            const dict = {
+                // Sex
+                "male": "ذكر",
+                "female": "أنثى",
+                // BMI Classes
+                "Normal": "وزن طبيعي",
+                "Underweight": "نقص الوزن",
+                "Over-weight": "وزن زائد",
+                "Obesity Type 1": "سمنة من الدرجة الأولى",
+                "Obesity Type 2": "سمنة من الدرجة الثانية",
+                "Obesity Type 3": "سمنة مفرطة من الدرجة الثالثة",
+                // AS Index Classifications
+                "Android Obesity": "سمنة أندرويدية (تفاحية الشكل)",
+                "Barrel Shaped Obesity": "سمنة برميلية الشكل",
+                "Intermediate Shape": "جسم متناسق بيني",
+                "Gynoid Obesity": "سمنة جينويدية (شكل كمثرى)",
+                // ACE classifications
+                "Essential Fat": "دهون أساسية فيزيولوجية",
+                "Athletes": "مستوى الرياضيين المحترفين",
+                "Fitness": "مستوى اللياقة البدنية البديل",
+                "Acceptable": "معدل طبيعي مقبول",
+                "Obese": "معدل سمنة مرتفع"
+            };
+            return dict[val] || val;
+        }
+    </script>
+
+    <!-- Google Sheets Setup Guide Modal (Hidden by Default) -->
+    <div id="sheetsGuideModal" class="hidden fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-2xl w-full p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-
